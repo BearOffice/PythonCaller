@@ -76,6 +76,8 @@ public class Engine
 
     private TResult? CallBase<TSource, TResult>(TSource source, bool hasStdin, bool hasStdout)
     {
+        TotalExecutionTime = default;
+
         var serializer = new JsonSerializer
         {
             ContractResolver = new CamelCasePropertyNamesContractResolver()
