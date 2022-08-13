@@ -8,21 +8,34 @@ public class Engine
 {
     public string Version { get => GetVersion(Runtime); }
     public string Runtime { get; }
-    public string FilePath { get; }
     public int MaxWaitTime { get; set; } = -1;
     public TimeSpan TotalExecutionTime { get; private set; }
-    public string ErrorMessage { get; private set; }
+    public string ErrorMessage { get; private set; } = "";
+    private string? _filePath;
+    private readonly Scope? _scope;
 
     public Engine(string filePath)
     {
+        _filePath = filePath;
         Runtime = "python";
-        FilePath = filePath;
     }
 
-    public Engine(string runtime, string filePath)
+    public Engine(string filePath, string runtime)
     {
+        _filePath = filePath;
         Runtime = runtime;
-        FilePath = filePath;
+    }
+
+    public Engine(Scope scope)
+    {
+        _scope = scope;
+        Runtime = "python";
+    }
+
+    public Engine(Scope scope, string runtime)
+    {
+        _scope = scope;
+        Runtime = runtime;
     }
 
     public async Task<TResult> CallAsync<TSource, TResult>(TSource source)
@@ -75,8 +88,10 @@ public class Engine
         _ = CallBase<object, object>(null, false, false);
     }
 
-    private TResult? CallBase<TSource, TResult>(TSource source, bool hasStdin, bool hasStdout)
-    {
+    private TResult? CallBase<TSource, TResult>(TSource? source, bool hasStdin, bool hasStdout)
+    { 
+        InitializeScopeIfNeeded(hasStdin, hasStdout);
+
         TotalExecutionTime = default;
         ErrorMessage = "";
 
@@ -93,7 +108,7 @@ public class Engine
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                Arguments = FilePath
+                Arguments = _filePath
             }
         };
 
@@ -131,11 +146,28 @@ public class Engine
         if (process.ExitCode != 0)
         {
             process.Close();
+            CleanScopeIfNeeded();
             throw new Exception(ErrorMessage);
         }
 
         process.Close();
+        CleanScopeIfNeeded();
         return result;
+    }
+
+    private void InitializeScopeIfNeeded(bool hasStdin, bool hasStdout)
+    {
+        if (_scope is not null)
+            _filePath = _scope.Initialize(hasStdin, hasStdout);
+    }
+
+    private void CleanScopeIfNeeded()
+    {
+        if (_scope is not null)
+        {
+            _scope.Clean();
+            _filePath = null;
+        }
     }
 
     public bool IsRuntimeValid()
