@@ -7,4 +7,4 @@ input = np.array(input)
 input.sort()
 input += input
 
-csc.set_output(list(input))
+csc.set_output(input.tolist())

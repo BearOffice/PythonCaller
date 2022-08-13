@@ -61,6 +61,31 @@ Output
 <br>
 
 ## example2
+Call python from string literal  
+**'input'**, **'output'** and **'csconnector'** are reserved words.
+```C#
+var scope = Scope.Create(@"
+import numpy as np
+
+ndarr = np.array(input)
+ndarr.sort()
+ndarr += np.array([10.0, 8.0, 15.0])
+output = ndarr.tolist()
+");
+var engine = new Engine(scope);
+var list = new List<double> { 5.0, 2.0, 3.0 };
+
+var result = engine.Call<List<double>, List<double>>(list);
+result.ForEach(i => Console.Write(i + " "));
+```
+Output
+```
+12 11 20 
+```
+
+<br>
+
+## example3
 Define an object.
 ```C#
 public class Weather
