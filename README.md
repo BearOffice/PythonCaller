@@ -33,6 +33,34 @@ The python file to be called should have at most ONE standard input to receive j
 <br>
 
 # How to use
+## example1
+tsne.py
+```py
+from sklearn.datasets import load_digits
+from sklearn.manifold import TSNE
+import csconnector as csc
+
+digits = load_digits()
+tsne = TSNE(init="pca", learning_rate="auto")
+digits_tsne = tsne.fit_transform(digits.data)
+#                          ↓ convert ndarray to list
+csc.set_output(digits_tsne.tolist())  # pass output to c#
+```
+C# test code
+```C#
+var engine = new Engine("tsne.py");
+
+var result = engine.Call<List<List<double>>>();  // call python
+Console.WriteLine($"Shape: ({result.Count}, {result[0].Count})");
+```
+Output
+```
+(1797, 2)
+```
+
+<br>
+
+## example2
 Define an object.
 ```C#
 public class Weather
@@ -48,7 +76,7 @@ class Weather(object):
         self.description = description
 ```
 
-python code(test1.py)
+test.py
 ```py
 import csconnector as csc
 
@@ -69,11 +97,11 @@ var weather = new Weather
     Description = "Warm"
 };
 
-var engine1 = new Engine("test1.py");
-var result1 = engine1.Call<Weather, Weather>(weather);  // call python
-Console.WriteLine(result1);
+var engine = new Engine("test.py");
+var result = engine.Call<Weather, Weather>(weather);  // call python
+Console.WriteLine(result);
 ```
-output
+Output
 ```
 35.3, Too hot
 ```

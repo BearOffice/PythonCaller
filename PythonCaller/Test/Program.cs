@@ -29,3 +29,12 @@ var result2 = engine2.Call<List<double>, List<double>>(list);
 result2.ForEach(i => Console.Write(i + " "));
 Console.WriteLine();
 Console.WriteLine("Time: " + engine2.TotalExecutionTime);
+Console.WriteLine("-------------------");
+
+
+var engine3 = new Engine("test3.py");
+
+var result3 = engine3.Call<List<List<double>>>();
+Console.WriteLine($"Shape: ({result3.Count}, {result3[0].Count})");
+Console.WriteLine("Time: " + engine3.TotalExecutionTime);
+Console.WriteLine("-------------------");
