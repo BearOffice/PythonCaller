@@ -11,6 +11,7 @@ public class Engine
     public string FilePath { get; }
     public int MaxWaitTime { get; set; } = -1;
     public TimeSpan TotalExecutionTime { get; private set; }
+    public string ErrorMessage { get; private set; }
 
     public Engine(string filePath)
     {
@@ -77,6 +78,7 @@ public class Engine
     private TResult? CallBase<TSource, TResult>(TSource source, bool hasStdin, bool hasStdout)
     {
         TotalExecutionTime = default;
+        ErrorMessage = "";
 
         var serializer = new JsonSerializer
         {
@@ -113,30 +115,27 @@ public class Engine
                 serializer.Serialize(writer, "");
         }
 
-        process.WaitForExit();
-        TotalExecutionTime = process.ExitTime - process.StartTime;
-        if (process.ExitCode != 0)
-        {
-            using var errReader = process.StandardError;
-            var errMessage = errReader.ReadToEnd();
-
-            process.Close();
-            throw new Exception(errMessage);
-        }
-
+        var result = default(TResult);
         if (hasStdout)
         {
             using var reader = new JsonTextReader(process.StandardOutput);
-            var output = serializer.Deserialize<TResult>(reader);
-
-            process.Close();
-            return output;
+            result = serializer.Deserialize<TResult>(reader);
         }
-        else
+
+        process.WaitForExit();
+        TotalExecutionTime = process.ExitTime - process.StartTime;
+
+        using var errReader = process.StandardError;
+        ErrorMessage = errReader.ReadToEnd();
+
+        if (process.ExitCode != 0)
         {
             process.Close();
-            return default;
+            throw new Exception(ErrorMessage);
         }
+
+        process.Close();
+        return result;
     }
 
     public bool IsRuntimeValid()
