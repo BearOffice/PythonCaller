@@ -112,6 +112,8 @@ def set_output(obj):
 
     internal static void CleanSpace()
     {
+        _dic.Clear();
+
         if (Directory.Exists(Path))
             Directory.Delete(Path, true);
     }
