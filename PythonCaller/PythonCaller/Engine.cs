@@ -10,6 +10,10 @@ namespace PythonCaller;
 public class Engine
 {
     /// <summary>
+    /// Temporary directory Path to store temporary files.
+    /// </summary>
+    public static string TempDirPath { get => Workspace.Path; set => Workspace.Path = value; }
+    /// <summary>
     /// Python version.
     /// </summary>
     public string Version { get => GetVersion(Runtime); }
@@ -63,9 +67,15 @@ public class Engine
     /// <typeparam name="TResult">Type of output</typeparam>
     /// <param name="source">Input</param>
     /// <returns><see cref="Task{TResult}"/></returns>
-    public async Task<TResult> CallAsync<TSource, TResult>(TSource source)
+    /// <exception cref="OperationCanceledException"></exception>
+    public async Task<TResult> CallAsync<TSource, TResult>(TSource source, CancellationToken? token = null)
     {
-        return await Task.Run(() => Call<TSource, TResult>(source));
+        var result = await Task.Run(() => CallBase<TSource, TResult>(source, true, true, token));
+
+        if (result is null)
+            throw new Exception("Standard Output cannot be null in the specificed python file.");
+        else
+            return result;
     }
 
     /// <summary>
@@ -91,9 +101,10 @@ public class Engine
     /// <typeparam name="TSource">Type of input</typeparam>
     /// <param name="source">Input</param>
     /// <returns><see cref="Task"/></returns>
-    public async Task CallAsync<TSource>(TSource source)
+    /// <exception cref="OperationCanceledException"></exception>
+    public async Task CallAsync<TSource>(TSource source, CancellationToken? token = null)
     {
-        await Task.Run(() => Call(source));
+        await Task.Run(() => CallBase<TSource, object>(source, true, false, token));
     }
 
     /// <summary>
@@ -111,9 +122,15 @@ public class Engine
     /// </summary>
     /// <typeparam name="TResult">Type of output</typeparam>
     /// <returns><see cref="Task{TResult}"/></returns>
-    public async Task<TResult> CallAsync<TResult>()
+    /// <exception cref="OperationCanceledException"></exception>
+    public async Task<TResult> CallAsync<TResult>(CancellationToken? token = null)
     {
-        return await Task.Run(() => Call<TResult>());
+        var result = await Task.Run(() => CallBase<object, TResult>(null, false, true, token));
+
+        if (result is null)
+            throw new Exception("Standard Output cannot be null in the specificed python file.");
+        else
+            return result;
     }
 
     /// <summary>
@@ -135,9 +152,10 @@ public class Engine
     /// Call python without input/output asynchronously.
     /// </summary>
     /// <returns><see cref="Task"/></returns>
-    public async Task CallAsync()
+    /// <exception cref="OperationCanceledException"></exception>
+    public async Task CallAsync(CancellationToken? token = null)
     {
-        await Task.Run(() => Call());
+        await Task.Run(() => CallBase<object, object>(null, false, false, token));
     }
 
     /// <summary>
@@ -148,8 +166,9 @@ public class Engine
         _ = CallBase<object, object>(null, false, false);
     }
 
-    private TResult? CallBase<TSource, TResult>(TSource? source, bool hasStdin, bool hasStdout)
-    { 
+    private TResult? CallBase<TSource, TResult>(TSource? source, bool hasStdin, bool hasStdout,
+        CancellationToken? token = null)
+    {
         InitializeScopeIfNeeded(hasStdin, hasStdout);
 
         TotalExecutionTime = default;
@@ -168,11 +187,13 @@ public class Engine
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                Arguments = _filePath
+                CreateNoWindow = true,
+                Arguments = ResolvePath(_filePath)
             }
         };
 
         process.Start();
+
         if (MaxWaitTime > 0)
         {
             Task.Run(() =>
@@ -182,22 +203,48 @@ public class Engine
             });
         }
 
-        using (var writer = new JsonTextWriter(process.StandardInput))
+        if (token is not null)
         {
-            if (hasStdin)
-                serializer.Serialize(writer, source);
-            else
-                serializer.Serialize(writer, "");
+            Task.Run(() =>
+            {
+                token.Value.WaitHandle.WaitOne();
+                if (token.Value.IsCancellationRequested)
+                {
+                    process.Kill();
+                    process.Close();
+                    CleanScopeIfNeeded();
+                }
+            });
         }
 
         var result = default(TResult);
-        if (hasStdout)
+
+        try
         {
-            using var reader = new JsonTextReader(process.StandardOutput);
-            result = serializer.Deserialize<TResult>(reader);
+            using (var writer = new JsonTextWriter(process.StandardInput))
+            {
+                if (hasStdin)
+                    serializer.Serialize(writer, source);
+                else
+                    serializer.Serialize(writer, "");
+            }
+
+            if (hasStdout)
+            {
+                using var reader = new JsonTextReader(process.StandardOutput);
+                result = serializer.Deserialize<TResult>(reader);
+            }
+
+            process.WaitForExit();
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (token is not null && token.Value.IsCancellationRequested)
+                token.Value.ThrowIfCancellationRequested();
+            else
+                throw ex;
         }
 
-        process.WaitForExit();
         TotalExecutionTime = process.ExitTime - process.StartTime;
 
         using var errReader = process.StandardError;
@@ -213,6 +260,20 @@ public class Engine
         process.Close();
         CleanScopeIfNeeded();
         return result;
+    }
+
+    // Add double quotes for path that contains whitespaces
+    private static string ResolvePath(string path)
+    {
+        if (path.Contains(' '))
+        {
+            if (!path.Contains('\'') || !path.Contains('"'))
+            {
+                return "\"" + path + "\"";
+            }
+        }
+
+        return path;
     }
 
     private void InitializeScopeIfNeeded(bool hasStdin, bool hasStdout)
