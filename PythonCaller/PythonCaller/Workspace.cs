@@ -9,8 +9,6 @@ namespace PythonCaller;
 
 internal class Workspace
 {
-    internal static string Path { get; } = "./.pythoncaller";
-
     private const string _csconnector = @"import sys, json
 
 def get_input():
@@ -32,7 +30,28 @@ def set_output(obj):
 
     private readonly int _uniqueNum;
     private readonly List<string> _tempFiles = new List<string>();
-   
+
+    private static string _path = "./__pycaller__";
+    internal static string Path
+    {
+        get
+        {
+            return _path;
+        }
+        set
+        {
+            if (_dic.IsEmpty)
+            {
+                _path = value;
+            }
+            else
+            {
+                if (_path != value)
+                    throw new InvalidOperationException("The path cannot be changed because the workspace is currently in use.");
+            }
+        }
+    }
+
     internal Workspace()
     {
         lock (_lock)
@@ -72,7 +91,7 @@ def set_output(obj):
     
     private static string? CreateFile(string fileName, string contents)
     {
-        var filePath = Path + "/" + fileName;
+        var filePath = _path + "/" + fileName;
 
         if (!File.Exists(filePath))
         {
@@ -100,13 +119,13 @@ def set_output(obj):
     private static void RemoveFile(string filePath)
     {
         if (File.Exists(filePath))
-            File.Delete(Path);
+            File.Delete(_path);
     }
 
     internal static void CreateSpace()
     {
-        var dirInfo = Directory.CreateDirectory(Path);
-        dirInfo.Attributes = FileAttributes.Directory | FileAttributes.Hidden;
+        var dirInfo = Directory.CreateDirectory(_path);
+        // dirInfo.Attributes = FileAttributes.Directory | FileAttributes.Hidden;
         CreateFile("csconnector.py", _csconnector);
     }
 
@@ -114,7 +133,7 @@ def set_output(obj):
     {
         _dic.Clear();
 
-        if (Directory.Exists(Path))
-            Directory.Delete(Path, true);
+        if (Directory.Exists(_path))
+            Directory.Delete(_path, true);
     }
 }
