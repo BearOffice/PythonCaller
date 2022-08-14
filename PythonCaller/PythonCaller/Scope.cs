@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace PythonCaller;
 
+/// <summary>
+/// Scope for python codes.
+/// </summary>
 public class Scope
 {
     private const string _importCodes = "import csconnector";
@@ -22,6 +25,23 @@ public class Scope
         _workspace = default;
     }
 
+    /// <summary>
+    /// Create scope for python codes.
+    /// <para>
+    /// The words <b>input</b>, <b>output</b> and <b>csconnector</b> are reserved words.
+    /// Use <b>input</b> variable to receive input from caller and 
+    /// define <b>output</b> variable to send output to caller.
+    /// </para>
+    /// <example>example:
+    /// <code>
+    /// ndarr = np.array(input)
+    /// ndarr.sort()
+    /// output = ndarr
+    /// </code>
+    /// </example>
+    /// </summary>
+    /// <param name="scope">Python codes.</param>
+    /// <returns><see cref="Scope"/></returns>
     public static Scope Create(string scope)
     {
         return new Scope(scope);

@@ -4,12 +4,30 @@ using Newtonsoft.Json.Serialization;
 
 namespace PythonCaller;
 
+/// <summary>
+/// Engine for calling python.
+/// </summary>
 public class Engine
 {
+    /// <summary>
+    /// Python version.
+    /// </summary>
     public string Version { get => GetVersion(Runtime); }
+    /// <summary>
+    /// Python runtime path.
+    /// </summary>
     public string Runtime { get; }
+    /// <summary>
+    /// Max wait time for the python process.
+    /// </summary>
     public int MaxWaitTime { get; set; } = -1;
+    /// <summary>
+    /// Total execution time of the called python process.
+    /// </summary>
     public TimeSpan TotalExecutionTime { get; private set; }
+    /// <summary>
+    /// Error message from the called python process.
+    /// </summary>
     public string ErrorMessage { get; private set; } = "";
     private string? _filePath;
     private readonly Scope? _scope;
@@ -38,11 +56,25 @@ public class Engine
         Runtime = runtime;
     }
 
+    /// <summary>
+    /// Call python with input/output asynchronously.
+    /// </summary>
+    /// <typeparam name="TSource">Type of input</typeparam>
+    /// <typeparam name="TResult">Type of output</typeparam>
+    /// <param name="source">Input</param>
+    /// <returns><see cref="Task{TResult}"/></returns>
     public async Task<TResult> CallAsync<TSource, TResult>(TSource source)
     {
         return await Task.Run(() => Call<TSource, TResult>(source));
     }
 
+    /// <summary>
+    /// Call python with input/output.
+    /// </summary>
+    /// <typeparam name="TSource">Type of input</typeparam>
+    /// <typeparam name="TResult">Type of output</typeparam>
+    /// <param name="source">Input</param>
+    /// <returns>Output</returns>
     public TResult Call<TSource, TResult>(TSource source)
     {
         var result = CallBase<TSource, TResult>(source, true, true);
@@ -53,21 +85,42 @@ public class Engine
             return result;
     }
 
+    /// <summary>
+    /// Call python with input asynchronously.
+    /// </summary>
+    /// <typeparam name="TSource">Type of input</typeparam>
+    /// <param name="source">Input</param>
+    /// <returns><see cref="Task"/></returns>
     public async Task CallAsync<TSource>(TSource source)
     {
         await Task.Run(() => Call(source));
     }
 
+    /// <summary>
+    /// Call python with input.
+    /// </summary>
+    /// <typeparam name="TSource">Type of input</typeparam>
+    /// <param name="source">Input</param>
     public void Call<TSource>(TSource source)
     {
         _ = CallBase<TSource, object>(source, true, false);
     }
 
+    /// <summary>
+    /// Call python with output asynchronously.
+    /// </summary>
+    /// <typeparam name="TResult">Type of output</typeparam>
+    /// <returns><see cref="Task{TResult}"/></returns>
     public async Task<TResult> CallAsync<TResult>()
     {
         return await Task.Run(() => Call<TResult>());
     }
 
+    /// <summary>
+    /// Call python with output.
+    /// </summary>
+    /// <typeparam name="TResult">Type of output</typeparam>
+    /// <returns>Output</returns>
     public TResult Call<TResult>()
     {
         var result = CallBase<object, TResult>(null, false, true);
@@ -78,11 +131,18 @@ public class Engine
             return result;
     }
 
+    /// <summary>
+    /// Call python without input/output asynchronously.
+    /// </summary>
+    /// <returns><see cref="Task"/></returns>
     public async Task CallAsync()
     {
         await Task.Run(() => Call());
     }
 
+    /// <summary>
+    /// Call python without input/output.
+    /// </summary>
     public void Call()
     {
         _ = CallBase<object, object>(null, false, false);
@@ -170,11 +230,20 @@ public class Engine
         }
     }
 
+    /// <summary>
+    /// Check if runtime is valid
+    /// </summary>
+    /// <returns><see langword="true"/> if runtime is valid; otherwise, <see langword="false"/>.</returns>
     public bool IsRuntimeValid()
     {
         return IsRuntimeValid(Runtime);
     }
 
+    /// <summary>
+    /// Get python version.
+    /// </summary>
+    /// <param name="runtime"></param>
+    /// <returns>Python version</returns>
     public static string GetVersion(string runtime)
     {
         var process = new Process
@@ -196,6 +265,11 @@ public class Engine
         return version;
     }
 
+    /// <summary>
+    /// Check if runtime is valid
+    /// </summary>
+    /// <param name="runtime">Runtime path</param>
+    /// <returns><see langword="true"/> if runtime is valid; otherwise, <see langword="false"/>.</returns>
     public static bool IsRuntimeValid(string runtime)
     {
         try
