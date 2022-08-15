@@ -313,6 +313,7 @@ public class Engine
             {
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
+                CreateNoWindow = true,
                 Arguments = "--version"
             }
         };
