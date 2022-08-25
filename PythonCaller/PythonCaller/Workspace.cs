@@ -25,10 +25,10 @@ def set_output(obj):
 
     private static readonly object _lock = new object();
     private static readonly ConcurrentDictionary<int, List<string>> _dic = new ConcurrentDictionary<int, List<string>>();
-    private static int _seed = new Random().Next(10000);
-    private static int _count = 0;
+    private static readonly RandomString _rand = new RandomString();
+    private static int _createdWorkspaceCount = 0;
 
-    private readonly int _uniqueNum;
+    private readonly int _uniqueNumber;
     private readonly List<string> _tempFiles = new List<string>();
 
     private static string _path = "./__pycaller__";
@@ -56,8 +56,8 @@ def set_output(obj):
     {
         lock (_lock)
         {
-            _uniqueNum = _count;
-            _count++;
+            _uniqueNumber = _createdWorkspaceCount;
+            _createdWorkspaceCount++;
         }
 
         CreateSpace();
@@ -65,14 +65,16 @@ def set_output(obj):
 
     internal string CreateTempFile(string contents)
     {
-        var fileName = GetUniqueName() + ".py";
-        var filePath = CreateFile(fileName, contents);
+        var filePath = default(string);
 
-        if (filePath is null)
-            throw new Exception("Failed to create temporary file.");
+        while (filePath is null)
+        {
+            var fileName = _rand.GetUniqueString() + ".py";
+            filePath = CreateFile(fileName, contents);
+        }
 
-        if (!_dic.ContainsKey(_uniqueNum))
-            _dic.GetOrAdd(_uniqueNum, _tempFiles);
+        if (!_dic.ContainsKey(_uniqueNumber))
+            _dic.GetOrAdd(_uniqueNumber, _tempFiles);
 
         _tempFiles.Add(filePath);
 
@@ -84,11 +86,11 @@ def set_output(obj):
         if (forceRemove)
             _tempFiles.ForEach(f => RemoveFile(f));
 
-        _dic.Remove(_uniqueNum, out _);
+        _dic.Remove(_uniqueNumber, out _);
 
         if (_dic.IsEmpty) CleanSpace();
     }
-    
+
     private static string? CreateFile(string fileName, string contents)
     {
         var filePath = _path + "/" + fileName;
@@ -102,18 +104,6 @@ def set_output(obj):
         }
 
         return null;
-    }
-
-    private static string GetUniqueName()
-    {
-        var name = _seed.ToString().GetHashCode().ToString("X");
-
-        lock (_lock)
-        {
-            _seed++;
-        }
-
-        return name;
     }
 
     private static void RemoveFile(string filePath)
