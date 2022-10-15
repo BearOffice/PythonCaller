@@ -17,12 +17,14 @@ def init_environment():
     global __json_output_token__
     if __json_output_token__ == """":
         __json_output_token__ = sys.stdin.readline()
-def get_input() :
+def get_input():
     if __json_output_token__ == """":
         raise Exception(""CSConnector's environment has not been initialized."")
     global __input_limit__
-    if __input_limit__ or __output_limit__:
-        return
+    if __input_limit__:
+        raise Exception(""Input function can only be used once."")
+    if __output_limit__:
+        raise Exception(""Input function can only be used before function 'set_output(obj)' been used."")
     __input_limit__ = True
     return json.load(sys.stdin)
 def set_output(obj):
@@ -30,7 +32,7 @@ def set_output(obj):
         raise Exception(""CSConnector's environment has not been initialized."")
     global __output_limit__
     if __output_limit__:
-        return
+        raise Exception(""Output function can only be used once."")
     __output_limit__ = True
     sys.stdout.writelines([__json_output_token__])
     try:
