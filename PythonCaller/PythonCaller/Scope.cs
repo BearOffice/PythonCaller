@@ -12,6 +12,7 @@ namespace PythonCaller;
 public class Scope
 {
     private const string _importCodes = "import csconnector";
+    private const string _initCodes = "csconnector.init_environment()";
     private const string _inputCodes = "input = csconnector.get_input()";
     private const string _outputCodes = "csconnector.set_output(output)";
 
@@ -47,13 +48,13 @@ public class Scope
         return new Scope(scope);
     }
 
-    internal string Initialize(bool hasStdin, bool hasStdout)
+    internal string Initialize(bool hasInput, bool hasOutput)
     {
         if (_filePath is not null)
             return _filePath;
 
         _workspace = new Workspace();
-        _filePath = _workspace.CreateTempFile(SupplyScope(_scope, hasStdin, hasStdout));
+        _filePath = _workspace.CreateTempFile(SupplyScope(_scope, hasInput, hasOutput));
 
         return _filePath;
     }
@@ -67,16 +68,16 @@ public class Scope
         }
     }
 
-    private static string SupplyScope(string scope, bool hasStdin, bool hasStdout)
+    private static string SupplyScope(string scope, bool hasInput, bool hasOutput)
     {
-        string tempStr;
+        var tempStr = _importCodes + "\n" + _initCodes + "\n";
 
-        if (hasStdin)
-            tempStr = _importCodes + "\n" + _inputCodes + "\n" + scope;
+        if (hasInput)
+            tempStr += _inputCodes + "\n" + scope;
         else
-            tempStr = _importCodes + "\n" + scope;
+            tempStr += scope;
 
-        if (hasStdout)
+        if (hasOutput)
             return tempStr + "\n" + _outputCodes;
         else
             return tempStr;

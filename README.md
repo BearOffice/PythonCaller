@@ -1,9 +1,8 @@
 # PythonCaller
 A class library to call and get result from python file.
 
-The python file to be called should have at most ONE standard input to receive json info from caller(e.g. c# program) and at most ONE standard output to pass json info to caller.
-
-`csconnector.py` wrapped the serialization and deserialization procedure into two simple functions `get_input()` and `set_output(ob)`. Import `csconnector` to use these functions.  
+Use these two functions `get_input()` and `set_output(obj)` in python program by importing `csconnector` to receive/send object from/to the caller(C# program).  
+*** You must first use `init environment()` before using `get_input()` or `set_output(obj)`.
 <br>
 
 ## State of interprocess communication
@@ -12,22 +11,23 @@ The python file to be called should have at most ONE standard input to receive j
        ↓
 ---------------------------------------
 [C#] serialize source object to json info
-[C#] pass json info to python program
+[C#] pass json_output_token and json info to python program
        ↓
  (can be simplified by using module csconnector)
-[py] receive json info from stdin
+[py] receive json_output_token and json info from stdin
 [py] deserialize json info to source object
        ↓
-[py] do some processes
+[py] do some processes (C# can receive stdoutput from python program)
        ↓
  (can be simplified by using module csconnector)
 [py] serialize result object to json info
-[py] pass json info to standard output
+[py] pass json_output_token and json info to standard output
        ↓
-[C#] deserialize result object from json info 
+[C#] receive json_output_token and deserialize result object from json info 
 ---------------------------------------
        ↓
 [C#] result object
+(json_output_token is to identify the border between normal stdoutput and json info output)
 ```
 
 <br>
@@ -39,6 +39,8 @@ tsne.py
 from sklearn.datasets import load_digits
 from sklearn.manifold import TSNE
 import csconnector as csc
+
+csc.init_environment()
 
 digits = load_digits()
 tsne = TSNE(init="pca", learning_rate="auto")
@@ -62,7 +64,8 @@ Output
 
 ## example2
 Call python from string literal  
-**'input'**, **'output'** and **'csconnector'** are reserved words.
+**'input'**, **'output'** and **'csconnector'** are reserved words.  
+`init environment()` is automatically implemented.
 ```C#
 var scope = Scope.Create(@"
 import numpy as np
@@ -70,7 +73,7 @@ import numpy as np
 ndarr = np.array(input)
 ndarr.sort()
 ndarr += np.array([10.0, 8.0, 15.0])
-output = ndarr.tolist()
+output = ndarr.tolist()  # set output
 ");
 var engine = new Engine(scope);
 var list = new List<double> { 5.0, 2.0, 3.0 };
@@ -105,6 +108,8 @@ test.py
 ```py
 import csconnector as csc
 
+csc.init_environment()
+
 input = csc.get_input()  # receive input from c#
 input = Weather(**input)  # convert object to Weather object
 
@@ -129,4 +134,10 @@ Console.WriteLine(result);
 Output
 ```
 35.3, Too hot
+```
+
+## example4
+Receive stdoutput from python program
+```C#
+engine.StdOutput += str => Console.WriteLine(str)
 ```

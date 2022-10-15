@@ -33,6 +33,10 @@ public class Engine
     /// Error message from the called python process.
     /// </summary>
     public string ErrorMessage { get; private set; } = "";
+    /// <summary>
+    /// StdOutput from the called python process.
+    /// </summary>
+    public event Action<string>? StdOutput;
     private string? _filePath;
     private readonly Scope? _scope;
 
@@ -166,10 +170,10 @@ public class Engine
         _ = CallBase<object, object>(null, false, false);
     }
 
-    private TResult? CallBase<TSource, TResult>(TSource? source, bool hasStdin, bool hasStdout,
+    private TResult? CallBase<TSource, TResult>(TSource? source, bool hasInput, bool hasOutput,
         CancellationToken? token = null)
     {
-        InitializeScopeIfNeeded(hasStdin, hasStdout);
+        InitializeScopeIfNeeded(hasInput, hasOutput);
 
         TotalExecutionTime = default;
         ErrorMessage = "";
@@ -221,15 +225,28 @@ public class Engine
 
         try
         {
+            var jsonOutputToken = new RandomString().GetUniqueString();
+            process.StandardInput.WriteLine(jsonOutputToken);
+
             using (var writer = new JsonTextWriter(process.StandardInput))
             {
-                if (hasStdin)
+                if (hasInput)
                     serializer.Serialize(writer, source);
                 else
                     serializer.Serialize(writer, "");
             }
 
-            if (hasStdout)
+            while (!process.StandardOutput.EndOfStream)
+            {
+                var line = process.StandardOutput.ReadLine();
+                if (line is not null)
+                {
+                    if (line == jsonOutputToken) break;
+                    StdOutput?.Invoke(line);
+                }
+            }
+            
+            if (hasOutput)
             {
                 using var reader = new JsonTextReader(process.StandardOutput);
                 result = serializer.Deserialize<TResult>(reader);

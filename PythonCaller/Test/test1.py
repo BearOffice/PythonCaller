@@ -5,6 +5,7 @@ class Weather(object):
         self.temp = temp
         self.description = description
 
+csc.init_environment()
 input = csc.get_input()
 input = Weather(**input)
 

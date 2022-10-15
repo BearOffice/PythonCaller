@@ -1,6 +1,7 @@
 ﻿import numpy as np
 import csconnector as csc
 
+csc.init_environment()
 input = csc.get_input()
 input = np.array(input)
 
