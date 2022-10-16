@@ -246,7 +246,7 @@ public class Engine
                 }
             }
             
-            if (hasOutput)
+            if (hasOutput && !process.HasExited)
             {
                 using var reader = new JsonTextReader(process.StandardOutput);
                 result = serializer.Deserialize<TResult>(reader);
